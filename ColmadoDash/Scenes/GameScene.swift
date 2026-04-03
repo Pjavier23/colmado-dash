@@ -82,54 +82,134 @@ class GameScene: SKScene, SKPhysicsContactDelegate, HUDDelegate {
     }
 
     private func buildRoad() {
-        // Main roads (grid)
-        let roadColor = Colors.road
-        let sidewalkColor = Colors.sidewalk
-
-        // Background ground
+        // Background ground — sidewalk tan
         let ground = SKShapeNode(rectOf: CGSize(width: worldWidth, height: worldHeight))
-        ground.fillColor = sidewalkColor; ground.strokeColor = .clear
+        ground.fillColor = Colors.sidewalkTan; ground.strokeColor = .clear
         ground.position = .zero
         worldNode.addChild(ground)
 
-        // Horizontal roads
+        // Horizontal roads with full markings
         for y in stride(from: -worldHeight/2, to: worldHeight/2, by: 300.0) {
             let road = SKShapeNode(rectOf: CGSize(width: worldWidth, height: 80))
-            road.fillColor = roadColor; road.strokeColor = .clear
+            road.fillColor = Colors.roadGray; road.strokeColor = .clear
             road.position = CGPoint(x: 0, y: y)
             road.zPosition = 1
             worldNode.addChild(road)
 
-            // Road markings
+            // Solid edge lines (white) at top & bottom of road
+            for edgeOffset: CGFloat in [-38, 38] {
+                let edge = SKShapeNode(rectOf: CGSize(width: worldWidth, height: 3))
+                edge.fillColor = .white; edge.strokeColor = .clear
+                edge.position = CGPoint(x: 0, y: y + edgeOffset)
+                edge.zPosition = 2
+                worldNode.addChild(edge)
+            }
+
+            // Dashed center line (yellow)
             for x in stride(from: -worldWidth/2, to: worldWidth/2, by: 60.0) {
-                let mark = SKShapeNode(rectOf: CGSize(width: 30, height: 4))
-                mark.fillColor = Colors.yellow.withAlphaComponent(0.7); mark.strokeColor = .clear
-                mark.position = CGPoint(x: x, y: y)
-                mark.zPosition = 2
-                worldNode.addChild(mark)
+                let dash = SKShapeNode(rectOf: CGSize(width: 30, height: 4))
+                dash.fillColor = Colors.lineYellow; dash.strokeColor = .clear
+                dash.position = CGPoint(x: x + 15, y: y)
+                dash.zPosition = 2
+                worldNode.addChild(dash)
+            }
+
+            // Manholes on road
+            for _ in 0..<6 {
+                let manhole = SKShapeNode(circleOfRadius: 9)
+                manhole.fillColor = SKColor(red: 0.22, green: 0.22, blue: 0.22, alpha: 1)
+                manhole.strokeColor = SKColor(red: 0.38, green: 0.38, blue: 0.38, alpha: 1)
+                manhole.lineWidth = 2
+                manhole.position = CGPoint(
+                    x: CGFloat.random(in: -worldWidth/2+20...worldWidth/2-20),
+                    y: y + CGFloat.random(in: -30...30)
+                )
+                manhole.zPosition = 2
+                worldNode.addChild(manhole)
+            }
+
+            // Road cracks
+            for _ in 0..<8 {
+                let crackPath = CGMutablePath()
+                let cx = CGFloat.random(in: -worldWidth/2+20...worldWidth/2-20)
+                let cy = y + CGFloat.random(in: -25...25)
+                crackPath.move(to: CGPoint(x: cx, y: cy))
+                crackPath.addLine(to: CGPoint(x: cx + CGFloat.random(in: 8...20),
+                                              y: cy + CGFloat.random(in: -12...12)))
+                let crack = SKShapeNode(path: crackPath)
+                crack.strokeColor = SKColor(red: 0.15, green: 0.15, blue: 0.15, alpha: 0.65)
+                crack.lineWidth = 1.5; crack.zPosition = 2
+                worldNode.addChild(crack)
             }
         }
 
         // Vertical roads
         for x in stride(from: -worldWidth/2, to: worldWidth/2, by: 300.0) {
             let road = SKShapeNode(rectOf: CGSize(width: 80, height: worldHeight))
-            road.fillColor = roadColor; road.strokeColor = .clear
+            road.fillColor = Colors.roadGray; road.strokeColor = .clear
             road.position = CGPoint(x: x, y: 0)
             road.zPosition = 1
             worldNode.addChild(road)
+
+            // Edge lines
+            for edgeOffset: CGFloat in [-38, 38] {
+                let edge = SKShapeNode(rectOf: CGSize(width: 3, height: worldHeight))
+                edge.fillColor = .white; edge.strokeColor = .clear
+                edge.position = CGPoint(x: x + edgeOffset, y: 0)
+                edge.zPosition = 2
+                worldNode.addChild(edge)
+            }
+
+            // Dashed center line (yellow, vertical)
+            for y in stride(from: -worldHeight/2, to: worldHeight/2, by: 60.0) {
+                let dash = SKShapeNode(rectOf: CGSize(width: 4, height: 30))
+                dash.fillColor = Colors.lineYellow; dash.strokeColor = .clear
+                dash.position = CGPoint(x: x, y: y + 15)
+                dash.zPosition = 2
+                worldNode.addChild(dash)
+            }
+        }
+
+        // Sidewalk brick tiles along road edges
+        buildSidewalkTiles()
+    }
+
+    private func buildSidewalkTiles() {
+        // Add brick-patterned sidewalk strips along horizontal roads
+        for y in stride(from: -worldHeight/2, to: worldHeight/2, by: 300.0) {
+            for sideY in [y + 48, y - 48] {
+                var bx: CGFloat = -worldWidth / 2
+                var rowToggle = false
+                for _ in 0..<2 {
+                    bx = rowToggle ? -worldWidth/2 + 12 : -worldWidth/2
+                    while bx < worldWidth / 2 {
+                        let tile = SKShapeNode(rectOf: CGSize(width: 22, height: 10))
+                        tile.fillColor = SKColor(red: 0.70, green: 0.64, blue: 0.50, alpha: 0.9)
+                        tile.strokeColor = SKColor(red: 0.55, green: 0.49, blue: 0.37, alpha: 0.9)
+                        tile.lineWidth = 1
+                        tile.position = CGPoint(x: bx + 11, y: sideY)
+                        tile.zPosition = 2
+                        worldNode.addChild(tile)
+                        bx += 24
+                    }
+                    rowToggle = !rowToggle
+                    _ = sideY
+                }
+            }
         }
     }
 
     private func buildBuildings() {
-        // Place buildings in the blocks between roads
+        // Place buildings in the blocks between roads — taller, NES arcade style
         let buildingLabels = ["COLMADO", "FERRETERÍA", "BANCA", "FARMACIA", "TIENDA",
                               "BAR", "BARBERÍA", "PANADERÍA", "POLLERÍA", "EL CHINO"]
         var colorIdx = 0
 
         for blockY in stride(from: -worldHeight/2 + 180, to: worldHeight/2 - 150, by: 300.0) {
             for blockX in stride(from: -worldWidth/2 + 180, to: worldWidth/2 - 150, by: 300.0) {
-                let bW = CGFloat.random(in: 80...140)
-                let bH = CGFloat.random(in: 60...140)
+                // Taller buildings to fill more screen
+                let bW = CGFloat.random(in: 90...150)
+                let bH = CGFloat.random(in: 100...200)
                 let label = buildingLabels.randomElement()!
                 let bldg = SpriteFactory.makeBuilding(width: bW, height: bH, label: label, colorIndex: colorIdx)
                 bldg.position = CGPoint(x: blockX + CGFloat.random(in: -30...30),
@@ -147,6 +227,75 @@ class GameScene: SKScene, SKPhysicsContactDelegate, HUDDelegate {
 
                 worldNode.addChild(bldg)
                 colorIdx += 1
+            }
+        }
+
+        // Power lines between some buildings
+        buildPowerLines()
+
+        // Street lights along roads
+        buildStreetLights()
+    }
+
+    private func buildPowerLines() {
+        // Horizontal power lines along road edges
+        for y in stride(from: -worldHeight/2 + 150, to: worldHeight/2 - 150, by: 300.0) {
+            var prevPoleX: CGFloat = -worldWidth / 2 + 60
+            while prevPoleX < worldWidth / 2 - 60 {
+                let nextPoleX = prevPoleX + CGFloat.random(in: 100...180)
+
+                // Pole
+                let pole = SKShapeNode(rectOf: CGSize(width: 4, height: 80))
+                pole.fillColor = SKColor(red: 0.3, green: 0.3, blue: 0.3, alpha: 1)
+                pole.strokeColor = .black; pole.lineWidth = 1
+                pole.position = CGPoint(x: prevPoleX, y: y + 40)
+                pole.zPosition = 3
+                worldNode.addChild(pole)
+
+                // Wire
+                let wirePath = CGMutablePath()
+                wirePath.move(to: CGPoint(x: prevPoleX, y: y + 80))
+                wirePath.addLine(to: CGPoint(x: nextPoleX, y: y + 72))
+                let wire = SKShapeNode(path: wirePath)
+                wire.strokeColor = SKColor(red: 0.15, green: 0.15, blue: 0.15, alpha: 0.8)
+                wire.lineWidth = 1.5; wire.zPosition = 3
+                worldNode.addChild(wire)
+
+                prevPoleX = nextPoleX
+            }
+        }
+    }
+
+    private func buildStreetLights() {
+        for y in stride(from: -worldHeight/2 + 100, to: worldHeight/2 - 100, by: 150.0) {
+            for x in stride(from: -worldWidth/2 + 100, to: worldWidth/2 - 100, by: 200.0) {
+                // Only place on road edges (approximate)
+                let isOnRoad = Int((y + worldHeight/2) / 300) != Int((y + worldHeight/2 + 40) / 300)
+                guard isOnRoad else { continue }
+
+                // Pole
+                let pole = SKShapeNode(rectOf: CGSize(width: 4, height: 60))
+                pole.fillColor = SKColor(red: 0.45, green: 0.45, blue: 0.48, alpha: 1)
+                pole.strokeColor = .black; pole.lineWidth = 1
+                pole.position = CGPoint(x: x, y: y + 30)
+                pole.zPosition = 3
+                worldNode.addChild(pole)
+
+                // Light head
+                let light = SKShapeNode(circleOfRadius: 7)
+                light.fillColor = Colors.lineYellow
+                light.strokeColor = .black; light.lineWidth = 1.5
+                light.position = CGPoint(x: x, y: y + 62)
+                light.zPosition = 3
+                worldNode.addChild(light)
+
+                // Soft glow
+                let glow = SKShapeNode(circleOfRadius: 14)
+                glow.fillColor = Colors.lineYellow.withAlphaComponent(0.15)
+                glow.strokeColor = .clear
+                glow.position = CGPoint(x: x, y: y + 62)
+                glow.zPosition = 2
+                worldNode.addChild(glow)
             }
         }
     }
@@ -434,10 +583,22 @@ class GameScene: SKScene, SKPhysicsContactDelegate, HUDDelegate {
             return
         }
         weapon.onHit(at: contactPoint, in: self)
+
+        // Flash white on hit
+        let flash = SKAction.sequence([
+            SKAction.colorize(with: .white, colorBlendFactor: 1.0, duration: 0.05),
+            SKAction.colorize(withColorBlendFactor: 0.0, duration: 0.1)
+        ])
+        enemy.run(flash)
+
+        // POW! / BAM! hit effect
+        let hitEffect = SpriteFactory.makeHitEffect(at: contactPoint)
+        worldNode.addChild(hitEffect)
+
         let dead = enemy.takeDamage()
         if dead {
             gs.earnMoney(25)
-            showPopup(text: "+$25 💀", color: Colors.yellow)
+            showPopup(text: "+$25", color: Colors.lineYellow)
         }
     }
 
@@ -488,69 +649,92 @@ class GameScene: SKScene, SKPhysicsContactDelegate, HUDDelegate {
     }
 
     private func showMissionCompleteOverlay(reward: Int) {
-        let overlay = buildOverlay(alpha: 0.88)
+        let overlay = buildOverlay(alpha: 0.92)
         cameraNode.addChild(overlay)
 
-        let title = SKLabelNode(text: "🎉 ¡MISIÓN COMPLETADA!")
-        title.fontName = "AvenirNext-Heavy"; title.fontSize = 28; title.fontColor = Colors.yellow
-        title.position = CGPoint(x: 0, y: 100)
+        // Mission complete title — arcade style
+        let title = SKLabelNode(text: "MISION COMPLETA!")
+        title.fontName = "Courier-Bold"; title.fontSize = 26; title.fontColor = Colors.lineYellow
+        title.position = CGPoint(x: 0, y: 105)
         overlay.addChild(title)
 
-        let rewardLbl = SKLabelNode(text: "Ganaste: $\(reward)")
-        rewardLbl.fontName = "AvenirNext-Bold"; rewardLbl.fontSize = 22; rewardLbl.fontColor = .white
+        // Decorative divider
+        let divider = SKShapeNode(rectOf: CGSize(width: 240, height: 3))
+        divider.fillColor = Colors.playerOrange; divider.strokeColor = .clear
+        divider.position = CGPoint(x: 0, y: 80)
+        overlay.addChild(divider)
+
+        let rewardLbl = SKLabelNode(text: "GANASTE: $\(reward)")
+        rewardLbl.fontName = "Courier-Bold"; rewardLbl.fontSize = 20; rewardLbl.fontColor = Colors.gold
         rewardLbl.position = CGPoint(x: 0, y: 50)
         overlay.addChild(rewardLbl)
 
-        let totalLbl = SKLabelNode(text: "Total: $\(gs.money)")
-        totalLbl.fontName = "AvenirNext-Bold"; totalLbl.fontSize = 18; totalLbl.fontColor = Colors.yellow
-        totalLbl.position = CGPoint(x: 0, y: 10)
+        let totalLbl = SKLabelNode(text: "TOTAL:  $\(gs.money)")
+        totalLbl.fontName = "Courier-Bold"; totalLbl.fontSize = 16; totalLbl.fontColor = .white
+        totalLbl.position = CGPoint(x: 0, y: 14)
         overlay.addChild(totalLbl)
 
-        let shopBtn = SpriteFactory.makeButton(text: "🛒 TIENDA", size: CGSize(width: 160, height: 44),
-                                               color: SKColor(red: 0.5, green: 0.1, blue: 0.5, alpha: 1))
-        shopBtn.position = CGPoint(x: -100, y: -60); shopBtn.name = "shopOverlay"
+        let shopBtn = SpriteFactory.makeButton(text: "TIENDA", size: CGSize(width: 148, height: 44),
+                                               color: Colors.purple)
+        shopBtn.position = CGPoint(x: -90, y: -55); shopBtn.name = "shopOverlay"
         overlay.addChild(shopBtn)
 
-        let nextBtn = SpriteFactory.makeButton(text: "▶ SIGUIENTE", size: CGSize(width: 160, height: 44),
-                                               color: SKColor(red: 0.1, green: 0.5, blue: 0.1, alpha: 1))
-        nextBtn.position = CGPoint(x: 100, y: -60); nextBtn.name = "nextMission"
+        let nextBtn = SpriteFactory.makeButton(text: "SIGUIENTE", size: CGSize(width: 148, height: 44),
+                                               color: Colors.grassGreen)
+        nextBtn.position = CGPoint(x: 90, y: -55); nextBtn.name = "nextMission"
         overlay.addChild(nextBtn)
 
-        let menuBtn = SpriteFactory.makeButton(text: "🏠 MENÚ", size: CGSize(width: 120, height: 36),
-                                               color: SKColor(red: 0.3, green: 0.3, blue: 0.3, alpha: 1))
-        menuBtn.position = CGPoint(x: 0, y: -120); menuBtn.name = "mainMenu"
+        let menuBtn = SpriteFactory.makeButton(text: "MENU", size: CGSize(width: 120, height: 36),
+                                               color: SKColor(red: 0.25, green: 0.25, blue: 0.25, alpha: 1))
+        menuBtn.position = CGPoint(x: 0, y: -115); menuBtn.name = "mainMenu"
         overlay.addChild(menuBtn)
 
         overlay.name = "completeOverlay"
     }
 
     private func showGameOverOverlay() {
-        let overlay = buildOverlay(alpha: 0.92)
+        let overlay = buildOverlay(alpha: 0.95)
         cameraNode.addChild(overlay)
 
-        let title = SKLabelNode(text: "💀 GAME OVER")
-        title.fontName = "AvenirNext-Heavy"; title.fontSize = 40; title.fontColor = .red
-        title.position = CGPoint(x: 0, y: 100)
+        // GAME OVER — classic arcade red
+        let title = SKLabelNode(text: "GAME OVER")
+        title.fontName = "Courier-Bold"; title.fontSize = 44; title.fontColor = Colors.red
+        title.position = CGPoint(x: 0, y: 105)
         overlay.addChild(title)
 
-        let sub = SKLabelNode(text: "Se acabó la misión, bróder")
-        sub.fontName = "AvenirNext-Bold"; sub.fontSize = 16; sub.fontColor = .white
-        sub.position = CGPoint(x: 0, y: 55)
+        // Shadow effect for title
+        let titleShadow = SKLabelNode(text: "GAME OVER")
+        titleShadow.fontName = "Courier-Bold"; titleShadow.fontSize = 44
+        titleShadow.fontColor = SKColor(red: 0.4, green: 0.0, blue: 0.0, alpha: 1)
+        titleShadow.position = CGPoint(x: 3, y: 102)
+        overlay.addChild(titleShadow)
+        overlay.addChild(title) // re-add on top
+
+        let sub = SKLabelNode(text: "SE ACABO LA MISION, BRODER")
+        sub.fontName = "Courier-Bold"; sub.fontSize = 14; sub.fontColor = .white
+        sub.position = CGPoint(x: 0, y: 58)
         overlay.addChild(sub)
 
-        let scoreLbl = SKLabelNode(text: "Puntuación: $\(gs.score)")
-        scoreLbl.fontName = "AvenirNext-Bold"; scoreLbl.fontSize = 20; scoreLbl.fontColor = Colors.yellow
-        scoreLbl.position = CGPoint(x: 0, y: 10)
+        // Score box
+        let scoreBg = SKShapeNode(rectOf: CGSize(width: 200, height: 36))
+        scoreBg.fillColor = SKColor(red: 0.3, green: 0.2, blue: 0.0, alpha: 0.9)
+        scoreBg.strokeColor = Colors.gold; scoreBg.lineWidth = 2
+        scoreBg.position = CGPoint(x: 0, y: 16)
+        overlay.addChild(scoreBg)
+
+        let scoreLbl = SKLabelNode(text: String(format: "SCORE: %06d", gs.score))
+        scoreLbl.fontName = "Courier-Bold"; scoreLbl.fontSize = 18; scoreLbl.fontColor = Colors.gold
+        scoreLbl.verticalAlignmentMode = .center; scoreLbl.position = CGPoint(x: 0, y: 16)
         overlay.addChild(scoreLbl)
 
-        let retryBtn = SpriteFactory.makeButton(text: "🔄 REINTENTAR", size: CGSize(width: 180, height: 48),
-                                                color: SKColor(red: 0.1, green: 0.55, blue: 0.1, alpha: 1))
-        retryBtn.position = CGPoint(x: 0, y: -60); retryBtn.name = "retry"
+        let retryBtn = SpriteFactory.makeButton(text: "REINTENTAR", size: CGSize(width: 175, height: 48),
+                                                color: Colors.grassGreen)
+        retryBtn.position = CGPoint(x: 0, y: -55); retryBtn.name = "retry"
         overlay.addChild(retryBtn)
 
-        let menuBtn = SpriteFactory.makeButton(text: "🏠 MENÚ", size: CGSize(width: 140, height: 40),
-                                               color: SKColor(red: 0.3, green: 0.3, blue: 0.3, alpha: 1))
-        menuBtn.position = CGPoint(x: 0, y: -120); menuBtn.name = "mainMenu"
+        let menuBtn = SpriteFactory.makeButton(text: "MENU", size: CGSize(width: 140, height: 40),
+                                               color: SKColor(red: 0.22, green: 0.22, blue: 0.22, alpha: 1))
+        menuBtn.position = CGPoint(x: 0, y: -115); menuBtn.name = "mainMenu"
         overlay.addChild(menuBtn)
 
         overlay.name = "gameOverOverlay"
@@ -558,11 +742,25 @@ class GameScene: SKScene, SKPhysicsContactDelegate, HUDDelegate {
 
     private func buildOverlay(alpha: CGFloat) -> SKNode {
         let n = SKNode(); n.zPosition = 200
-        let bg = SKShapeNode(rectOf: CGSize(width: size.width * 0.85, height: size.height * 0.6),
-                             cornerRadius: 16)
-        bg.fillColor = Colors.hudBG.withAlphaComponent(alpha)
-        bg.strokeColor = SKColor(red: 1, green: 1, blue: 1, alpha: 0.4); bg.lineWidth = 2
+
+        // Outer shadow
+        let shadow = SKShapeNode(rectOf: CGSize(width: size.width * 0.86, height: size.height * 0.61))
+        shadow.fillColor = .black; shadow.strokeColor = .clear
+        shadow.position = CGPoint(x: 3, y: -4)
+        n.addChild(shadow)
+
+        // Main panel — NES style (black bg, orange border)
+        let bg = SKShapeNode(rectOf: CGSize(width: size.width * 0.85, height: size.height * 0.60))
+        bg.fillColor = Colors.hudBlack.withAlphaComponent(alpha)
+        bg.strokeColor = Colors.playerOrange; bg.lineWidth = 4
         n.addChild(bg)
+
+        // Inner highlight border
+        let inner = SKShapeNode(rectOf: CGSize(width: size.width * 0.82, height: size.height * 0.57))
+        inner.fillColor = .clear
+        inner.strokeColor = SKColor(red: 1, green: 1, blue: 1, alpha: 0.12); inner.lineWidth = 2
+        n.addChild(inner)
+
         return n
     }
 
